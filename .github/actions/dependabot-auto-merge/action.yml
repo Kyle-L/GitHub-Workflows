@@ -1,0 +1,36 @@
+# Dependabot Auto-merge Action
+# 
+# Automatically enables auto-merge for Dependabot pull requests using the GitHub CLI.
+#
+# Usage Example:
+# --------------
+# name: Dependabot Auto Merge
+# on: pull_request
+
+# permissions:
+#   contents: write
+#   pull-requests: write
+
+# jobs:
+#   dependabot:
+#     runs-on: ubuntu-latest
+#     if: github.actor == 'dependabot[bot]'
+#     steps:
+#       - name: Enable auto-merge for Dependabot PRs
+#         uses: Kyle-L/GitHub-Workflows/.github/actions/dependabot-auto-merge@main
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+name: 'Dependabot Auto-merge'
+description: 'Automatically enable auto-merge for Dependabot pull requests using GitHub CLI'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Enable auto-merge for Dependabot PRs
+      if: github.actor == 'dependabot[bot]'
+      shell: bash
+      run: gh pr merge --auto --merge "$PR_URL"
+      env:
+        PR_URL: ${{ github.event.pull_request.html_url }}
+        # GITHUB_TOKEN should be provided by the calling workflow

@@ -1,0 +1,113 @@
+name: 'Discord Notification'
+description: 'Send a Discord notification with commit info and dynamic image'
+
+inputs:
+  webhook:
+    description: 'Discord webhook URL'
+    required: true
+  status:
+    description: 'Status of the workflow (starting, success, failure, cancelled, live)'
+    required: true
+  title:
+    description: 'Title for the notification'
+    required: true
+  description:
+    description: 'Description for the notification'
+    required: false
+    default: ''
+  commit_sha:
+    description: 'Full commit SHA'
+    required: true
+  author_name:
+    description: 'Author username'
+    required: true
+  repository:
+    description: 'Repository (owner/repo)'
+    required: true
+  server_url:
+    description: 'GitHub server URL'
+    required: true
+  run_id:
+    description: 'Workflow run ID'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get commit info
+      id: vars
+      shell: bash
+      run: |
+        SHORT_SHA="${{ inputs.commit_sha }}"
+        SHORT_SHA="${SHORT_SHA::8}"
+        echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+        
+        # Handle author name
+        AUTHOR="${{ inputs.author_name }}"
+        if [ -z "$AUTHOR" ]; then
+          AUTHOR="Unknown"
+        fi
+        echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+        
+        # URL encode the title for the image
+        TITLE="${{ inputs.title }}"
+        ENCODED_TITLE=$(echo "$TITLE" | sed 's/ /+/g' | sed 's/[^a-zA-Z0-9+_-]//g')
+        if [ -z "$ENCODED_TITLE" ]; then
+          ENCODED_TITLE="Update"
+        fi
+          echo "encoded_title=$ENCODED_TITLE" >> $GITHUB_OUTPUT
+        
+        # Set status-specific colors and gradients
+        case "${{ inputs.status }}" in
+          starting)
+            echo "color=3447003" >> $GITHUB_OUTPUT
+            echo "bg_color=1a5276" >> $GITHUB_OUTPUT
+            echo "gradient_from=1a5276" >> $GITHUB_OUTPUT
+            echo "gradient_to=2874a6" >> $GITHUB_OUTPUT
+            echo "text_color=FFFFFF" >> $GITHUB_OUTPUT
+            ;;
+          success)
+            echo "color=3066993" >> $GITHUB_OUTPUT
+            echo "bg_color=196f3d" >> $GITHUB_OUTPUT
+            echo "gradient_from=196f3d" >> $GITHUB_OUTPUT
+            echo "gradient_to=28a745" >> $GITHUB_OUTPUT
+            echo "text_color=FFFFFF" >> $GITHUB_OUTPUT
+            ;;
+          failure)
+            echo "color=15158332" >> $GITHUB_OUTPUT
+            echo "bg_color=922b21" >> $GITHUB_OUTPUT
+            echo "gradient_from=922b21" >> $GITHUB_OUTPUT
+            echo "gradient_to=dc3545" >> $GITHUB_OUTPUT
+            echo "text_color=FFFFFF" >> $GITHUB_OUTPUT
+            ;;
+          cancelled)
+            echo "color=9807270" >> $GITHUB_OUTPUT
+            echo "bg_color=4d5656" >> $GITHUB_OUTPUT
+            echo "gradient_from=4d5656" >> $GITHUB_OUTPUT
+            echo "gradient_to=6c757d" >> $GITHUB_OUTPUT
+            echo "text_color=FFFFFF" >> $GITHUB_OUTPUT
+            ;;
+          live)
+            echo "color=10181046" >> $GITHUB_OUTPUT
+            echo "bg_color=6c3483" >> $GITHUB_OUTPUT
+            echo "gradient_from=6c3483" >> $GITHUB_OUTPUT
+            echo "gradient_to=9966cc" >> $GITHUB_OUTPUT
+            echo "text_color=FFFFFF" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            echo "color=3447003" >> $GITHUB_OUTPUT
+            echo "bg_color=1a5276" >> $GITHUB_OUTPUT
+            echo "gradient_from=1a5276" >> $GITHUB_OUTPUT
+            echo "gradient_to=2874a6" >> $GITHUB_OUTPUT
+            echo "text_color=FFFFFF" >> $GITHUB_OUTPUT
+            ;;
+        esac
+
+    - name: Send Discord notification
+      uses: Ilshidur/action-discord@0.4.0
+      continue-on-error: true
+      env:
+        DISCORD_WEBHOOK: ${{ inputs.webhook }}
+        DISCORD_EMBEDS: '[{"title":"${{ inputs.title }}","description":"${{ inputs.description }}","color":${{ steps.vars.outputs.color }},"image":{"url":"https://via.assets.so/img.jpg?w=1200&h=200&gradientFrom=${{ steps.vars.outputs.gradient_from }}&gradientTo=${{ steps.vars.outputs.gradient_to }}&gradientAngle=135&text=${{ steps.vars.outputs.encoded_title }}&textColor=${{ steps.vars.outputs.text_color }}&f=png"},"fields":[{"name":"Commit","value":"[`${{ steps.vars.outputs.short_sha }}`](${{ inputs.server_url }}/${{ inputs.repository }}/commit/${{ inputs.commit_sha }})","inline":true},{"name":"Author","value":"${{ steps.vars.outputs.author }}","inline":true},{"name":"Workflow","value":"[View Run](${{ inputs.server_url }}/${{ inputs.repository }}/actions/runs/${{ inputs.run_id }})"}]}]'
+      with:
+        args: ''
