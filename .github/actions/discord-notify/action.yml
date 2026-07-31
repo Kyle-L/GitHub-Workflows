@@ -1,6 +1,10 @@
 name: 'Discord Notification'
 description: 'Send a Discord notification with commit info and dynamic image'
 
+branding:
+  icon: 'bell'
+  color: 'purple'
+
 inputs:
   webhook:
     description: 'Discord webhook URL'

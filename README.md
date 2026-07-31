@@ -6,6 +6,7 @@ A collection of reusable GitHub Actions for common CI/CD tasks.
 
 - [Dependabot Auto-merge](#dependabot-auto-merge) - Automatically enable auto-merge for Dependabot PRs
 - [Discord Notification](#discord-notification) - Send rich Discord notifications with workflow status
+- [Free Disk Space](#free-disk-space) - Free up disk space on Ubuntu runners before resource-intensive builds
 
 ---
 
@@ -122,6 +123,49 @@ jobs:
 | `failure` | Red | Dark red → Bright red |
 | `cancelled` | Gray | Dark gray → Light gray |
 | `live` | Purple | Dark purple → Bright purple |
+
+---
+
+## Free Disk Space
+
+Frees up disk space on Ubuntu GitHub Actions runners by removing optional runtimes, packages, Docker images, and swap storage. Useful before resource-intensive build or test steps.
+
+### Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `android` | No | `true` | Remove Android runtime |
+| `dotnet` | No | `true` | Remove .NET runtime |
+| `haskell` | No | `true` | Remove Haskell runtime |
+| `large-packages` | No | `true` | Remove large packages (LLVM, PHP, MongoDB, MySQL, Azure CLI, etc.) |
+| `docker-images` | No | `true` | Remove Docker images |
+| `tool-cache` | No | `false` | Remove image tool cache |
+| `swap-storage` | No | `true` | Remove swap storage |
+
+### Usage
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free Disk Space
+        uses: Kyle-L/GitHub-Workflows/.github/actions/free-space@main
+
+      - uses: actions/checkout@v4
+
+      # Your build steps here...
+```
+
+You can disable individual cleanups if your workflow depends on those tools:
+
+```yaml
+      - name: Free Disk Space
+        uses: Kyle-L/GitHub-Workflows/.github/actions/free-space@main
+        with:
+          dotnet: 'false'
+          tool-cache: 'true'
+```
 
 ---
 

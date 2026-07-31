@@ -24,6 +24,10 @@
 name: 'Dependabot Auto-merge'
 description: 'Automatically enable auto-merge for Dependabot pull requests using GitHub CLI'
 
+branding:
+  icon: 'git-merge'
+  color: 'blue'
+
 runs:
   using: 'composite'
   steps:

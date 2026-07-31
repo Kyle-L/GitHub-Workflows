@@ -1,0 +1,211 @@
+# Free Disk Space Action
+#
+# Frees up disk space on Ubuntu GitHub Actions runners by removing
+# optional runtimes, packages, Docker images, and swap storage.
+#
+# Usage Example:
+# --------------
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Free Disk Space
+#         uses: Kyle-L/GitHub-Workflows/.github/actions/free-space@main
+
+name: 'Free Disk Space'
+description: 'Free up disk space on Ubuntu GitHub Actions runners'
+
+branding:
+  icon: 'trash-2'
+  color: 'green'
+
+inputs:
+  android:
+    description: 'Remove Android runtime'
+    required: false
+    default: 'true'
+  dotnet:
+    description: 'Remove .NET runtime'
+    required: false
+    default: 'true'
+  haskell:
+    description: 'Remove Haskell runtime'
+    required: false
+    default: 'true'
+  large-packages:
+    description: 'Remove large packages'
+    required: false
+    default: 'true'
+  docker-images:
+    description: 'Remove Docker images'
+    required: false
+    default: 'true'
+  tool-cache:
+    description: 'Remove image tool cache'
+    required: false
+    default: 'false'
+  swap-storage:
+    description: 'Remove swap storage'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+
+        # ======
+        # MACROS
+        # ======
+
+        printSeparationLine() {
+          str=${1:=}
+          num=${2:-80}
+          counter=1
+          output=""
+          while [ $counter -le $num ]
+          do
+             output="${output}${str}"
+             counter=$((counter+1))
+          done
+          echo "${output}"
+        }
+
+        getAvailableSpace() { echo $(df -a $1 | awk 'NR > 1 {avail+=$4} END {print avail}'); }
+
+        formatByteCount() { echo $(numfmt --to=iec-i --suffix=B --padding=7 $1'000'); }
+
+        printSavedSpace() {
+          saved=${1}
+          title=${2:-}
+
+          echo ""
+          printSeparationLine '*' 80
+          if [ ! -z "${title}" ]; then
+            echo "=> ${title}: Saved $(formatByteCount $saved)"
+          else
+            echo "=> Saved $(formatByteCount $saved)"
+          fi
+          printSeparationLine '*' 80
+          echo ""
+        }
+
+        printDH() {
+          caption=${1:-}
+
+          printSeparationLine '=' 80
+          echo "${caption}"
+          echo ""
+          echo "$ df -h /"
+          echo ""
+          df -h /
+          echo "$ df -a /"
+          echo ""
+          df -a /
+          echo "$ df -a"
+          echo ""
+          df -a
+          printSeparationLine '=' 80
+        }
+
+
+        # ======
+        # SCRIPT
+        # ======
+
+        AVAILABLE_INITIAL=$(getAvailableSpace)
+        AVAILABLE_ROOT_INITIAL=$(getAvailableSpace '/')
+
+        printDH "BEFORE CLEAN-UP:"
+        echo ""
+
+        # Option: Remove Android library
+
+        if [[ ${{ inputs.android }} == 'true' ]]; then
+          BEFORE=$(getAvailableSpace)
+          sudo rm -rf /usr/local/lib/android || true
+          AFTER=$(getAvailableSpace)
+          printSavedSpace $((AFTER-BEFORE)) "Android library"
+        fi
+
+        # Option: Remove .NET runtime
+
+        if [[ ${{ inputs.dotnet }} == 'true' ]]; then
+          BEFORE=$(getAvailableSpace)
+          sudo rm -rf /usr/share/dotnet || true
+          AFTER=$(getAvailableSpace)
+          printSavedSpace $((AFTER-BEFORE)) ".NET runtime"
+        fi
+
+        # Option: Remove Haskell runtime
+
+        if [[ ${{ inputs.haskell }} == 'true' ]]; then
+          BEFORE=$(getAvailableSpace)
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/.ghcup || true
+          AFTER=$(getAvailableSpace)
+          printSavedSpace $((AFTER-BEFORE)) "Haskell runtime"
+        fi
+
+        # Option: Remove large packages
+
+        if [[ ${{ inputs.large-packages }} == 'true' ]]; then
+          BEFORE=$(getAvailableSpace)
+          sudo apt-get remove -y '^aspnetcore-.*' || echo "::warning::The command [sudo apt-get remove -y '^aspnetcore-.*'] failed to complete successfully. Proceeding..."
+          sudo apt-get remove -y '^dotnet-.*' --fix-missing || echo "::warning::The command [sudo apt-get remove -y '^dotnet-.*' --fix-missing] failed to complete successfully. Proceeding..."
+          sudo apt-get remove -y '^llvm-.*' --fix-missing || echo "::warning::The command [sudo apt-get remove -y '^llvm-.*' --fix-missing] failed to complete successfully. Proceeding..."
+          sudo apt-get remove -y 'php.*' --fix-missing || echo "::warning::The command [sudo apt-get remove -y 'php.*' --fix-missing] failed to complete successfully. Proceeding..."
+          sudo apt-get remove -y '^mongodb-.*' --fix-missing || echo "::warning::The command [sudo apt-get remove -y '^mongodb-.*' --fix-missing] failed to complete successfully. Proceeding..."
+          sudo apt-get remove -y '^mysql-.*' --fix-missing || echo "::warning::The command [sudo apt-get remove -y '^mysql-.*' --fix-missing] failed to complete successfully. Proceeding..."
+          sudo apt-get remove -y azure-cli google-chrome-stable firefox powershell mono-devel libgl1-mesa-dri --fix-missing || echo "::warning::The command [sudo apt-get remove -y azure-cli google-chrome-stable firefox powershell mono-devel libgl1-mesa-dri --fix-missing] failed to complete successfully. Proceeding..."
+          sudo apt-get remove -y google-cloud-sdk --fix-missing || echo "::debug::The command [sudo apt-get remove -y google-cloud-sdk --fix-missing] failed to complete successfully. Proceeding..."
+          sudo apt-get remove -y google-cloud-cli --fix-missing || echo "::debug::The command [sudo apt-get remove -y google-cloud-cli --fix-missing] failed to complete successfully. Proceeding..."
+          sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed to complete successfully. Proceeding..."
+          sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed to complete successfully. Proceeding..."
+          AFTER=$(getAvailableSpace)
+          printSavedSpace $((AFTER-BEFORE)) "Large misc. packages"
+        fi
+
+        # Option: Remove Docker images
+
+        if [[ ${{ inputs.docker-images }} == 'true' ]]; then
+          BEFORE=$(getAvailableSpace)
+          sudo docker image prune --all --force || true
+          AFTER=$(getAvailableSpace)
+          printSavedSpace $((AFTER-BEFORE)) "Docker images"
+        fi
+
+        # Option: Remove tool cache
+
+        if [[ ${{ inputs.tool-cache }} == 'true' ]]; then
+          BEFORE=$(getAvailableSpace)
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
+          AFTER=$(getAvailableSpace)
+          printSavedSpace $((AFTER-BEFORE)) "Tool cache"
+        fi
+
+        # Option: Remove swap storage
+
+        if [[ ${{ inputs.swap-storage }} == 'true' ]]; then
+          BEFORE=$(getAvailableSpace)
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile || true
+          free -h
+          AFTER=$(getAvailableSpace)
+          printSavedSpace $((AFTER-BEFORE)) "Swap storage"
+        fi
+
+        # Output saved space statistics
+
+        AVAILABLE_END=$(getAvailableSpace)
+        AVAILABLE_ROOT_END=$(getAvailableSpace '/')
+
+        echo ""
+        printDH "AFTER CLEAN-UP:"
+
+        echo ""
+        echo "/dev/root:"
+        printSavedSpace $((AVAILABLE_ROOT_END - AVAILABLE_ROOT_INITIAL))
+        echo "overall:"
+        printSavedSpace $((AVAILABLE_END - AVAILABLE_INITIAL))
