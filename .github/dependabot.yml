@@ -6,7 +6,25 @@
 version: 2
 updates:
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directory: "/.github/actions/discord-notify"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/.github/actions/dependabot-auto-merge"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/.github/actions/free-space"
     groups:
       github-actions:
         patterns:
