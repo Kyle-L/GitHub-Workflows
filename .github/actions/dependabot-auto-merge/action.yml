@@ -8,6 +8,7 @@
 # on: pull_request
 
 # permissions:
+#   checks: read
 #   contents: write
 #   pull-requests: write
 
@@ -22,7 +23,13 @@
 #           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 name: 'Dependabot Auto-merge'
-description: 'Automatically enable auto-merge for Dependabot pull requests using GitHub CLI'
+description: 'Wait for required CI checks, then enable Dependabot auto-merge using GitHub CLI'
+
+inputs:
+  require-checks:
+    description: 'Wait for all required status checks to pass before enabling auto-merge'
+    required: false
+    default: 'true'
 
 branding:
   icon: 'git-merge'
@@ -31,6 +38,14 @@ branding:
 runs:
   using: 'composite'
   steps:
+    - name: Wait for required CI checks
+      if: github.actor == 'dependabot[bot]' && inputs.require-checks == 'true'
+      shell: bash
+      run: gh pr checks "$PR_URL" --required --watch --fail-fast
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_URL: ${{ github.event.pull_request.html_url }}
+
     - name: Enable auto-merge for Dependabot PRs
       if: github.actor == 'dependabot[bot]'
       shell: bash
