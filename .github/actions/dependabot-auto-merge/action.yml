@@ -8,7 +8,6 @@
 # on: pull_request
 
 # permissions:
-#   checks: read
 #   contents: write
 #   pull-requests: write
 
@@ -23,13 +22,7 @@
 #           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 name: 'Dependabot Auto-merge'
-description: 'Wait for required CI checks, then enable Dependabot auto-merge using GitHub CLI'
-
-inputs:
-  require-checks:
-    description: 'Wait for all required status checks to pass before enabling auto-merge'
-    required: false
-    default: 'true'
+description: 'Enable GitHub auto-merge for Dependabot pull requests'
 
 branding:
   icon: 'git-merge'
@@ -38,18 +31,14 @@ branding:
 runs:
   using: 'composite'
   steps:
-    - name: Wait for required CI checks
-      if: github.actor == 'dependabot[bot]' && inputs.require-checks == 'true'
-      shell: bash
-      run: gh pr checks "$PR_URL" --required --watch --fail-fast
-      env:
-        GH_TOKEN: ${{ github.token }}
-        PR_URL: ${{ github.event.pull_request.html_url }}
-
     - name: Enable auto-merge for Dependabot PRs
       if: github.actor == 'dependabot[bot]'
       shell: bash
-      run: gh pr merge --auto --merge "$PR_URL"
+      run: |
+        gh api graphql \
+          -f query='mutation($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!) { enablePullRequestAutoMerge(input: {pullRequestId: $pullRequestId, mergeMethod: $mergeMethod}) { pullRequest { id } } }' \
+          -F pullRequestId="$PULL_REQUEST_ID" \
+          -F mergeMethod=MERGE
       env:
-        PR_URL: ${{ github.event.pull_request.html_url }}
-        # GITHUB_TOKEN should be provided by the calling workflow
+        GH_TOKEN: ${{ github.token }}
+        PULL_REQUEST_ID: ${{ github.event.pull_request.node_id }}

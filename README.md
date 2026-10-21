@@ -12,7 +12,7 @@ A collection of reusable GitHub Actions for common CI/CD tasks.
 
 ## Dependabot Auto-merge
 
-Waits for required CI checks, then enables auto-merge for Dependabot pull requests using the GitHub CLI.
+Enables GitHub auto-merge for Dependabot pull requests. GitHub waits to merge until the pull request's required status checks pass.
 
 ### Usage
 
@@ -21,7 +21,6 @@ name: Dependabot Auto Merge
 on: pull_request
 
 permissions:
-  checks: read
   contents: write
   pull-requests: write
 
@@ -36,7 +35,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-By default, the action waits for required status checks to complete and pass before enabling auto-merge. Configure the checks as required in the target branch's ruleset or branch protection settings. To skip the preflight check for a specific caller, set `require-checks: 'false'` in the step's `with` block.
+Configure the CI checks that must pass in the target branch's ruleset or branch protection settings. GitHub's native auto-merge will keep the pull request open until those required checks pass; this action does not need check-reading permissions.
 
 ---
 
